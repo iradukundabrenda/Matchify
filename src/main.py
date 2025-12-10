@@ -73,7 +73,7 @@ predicted_matrix = predict_ratings(U, Sigma, VT)
 predicted_matrix = np.clip(predicted_matrix, 0, 5)
 
 print("\nPredicted Ratings Table:")
-print(np.round(predicted_matrix, 1))
+print(np.round(predicted_matrix).astype(int))
 
 # Step 6: Recommend top unrated movies for the current user
 
