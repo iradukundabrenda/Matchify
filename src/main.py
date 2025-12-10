@@ -1,47 +1,40 @@
 import pandas as pd
 import numpy as np
-
-# This file will compute a very simple movie recommender using SVD
-
+from svd_matchify import compute_svd, predict_ratings
 
 # Step 1: Load the data
-# CSV file with user ratings
-# Rows = users, Columns = movies
 
-ratings_file = "../data/ratings_small.csv"
-ratings_df = pd.read_csv(ratings_file)
+ratings_file = "data/ratings_small.csv"
+
+# Read CSV and treat empty strings as NaN
+ratings_df = pd.read_csv(ratings_file, na_values=["", " "])
 
 print("Original Ratings Table:")
 print(ratings_df)
 
-# Convert the ratings table to a numeric matrix
-# Skip the first column which has user IDs
-
+# Convert the ratings table to a numeric matrix (skip the first column with user IDs)
 ratings_matrix = ratings_df.iloc[:, 1:].values
+ratings_matrix = ratings_matrix.astype(float)  # Ensure all values are floats
 
 # Step 2: Compute SVD
-# Simple SVD using numpy
-# U, Sigma, VT = decomposition of the ratings matrix
 
-U, Sigma, VT = np.linalg.svd(ratings_matrix, full_matrices=False)
+U, Sigma, VT = compute_svd(ratings_matrix)
 
-# Step 3: Reconstruct the matrix
-# Multiply the SVD components to predict missing ratings
+# Step 3: Predict missing ratings
 
-Sigma_matrix = np.diag(Sigma)
-predicted_matrix = np.dot(np.dot(U, Sigma_matrix), VT)
+predicted_matrix = predict_ratings(U, Sigma, VT)
+
+# Replace tiny numerical errors with 0
+predicted_matrix[np.abs(predicted_matrix) < 1e-10] = 0
+
 
 print("\nPredicted Ratings Table:")
 print(predicted_matrix)
 
 # Step 4: Recommend top movies
-# Recommend the top 2 movies for each user
 
 top_n = 2
 for i, user_ratings in enumerate(predicted_matrix):
-
-    # Get the indices of the top ratings
-
     top_indices = user_ratings.argsort()[::-1][:top_n]
     print(f"\nTop {top_n} recommendations for user {ratings_df.iloc[i,0]}:")
     for idx in top_indices:
