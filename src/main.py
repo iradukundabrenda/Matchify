@@ -54,7 +54,7 @@ print(np.round(predicted_matrix, 2))
 print(f"\nTop recommendations for {user_id}:")
 
 # Find this user’s row in the dataframe
-user_index = list(ratings_df["user"].values).index(user_id)
+user_index = list(ratings_df["user_id"].values).index(user_id)
 
 # Get predicted ratings for this user
 predicted_row = predicted_matrix[user_index]
