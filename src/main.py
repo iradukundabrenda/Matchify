@@ -15,11 +15,10 @@ def compute_svd(ratings_matrix):
 
 def predict_ratings(U, Sigma, VT):
     """
-    Compute the predicted ratings by reconstructing the matrix.
+    Reconstruct the ratings matrix from SVD components.
     """
     predicted = np.dot(np.dot(U, Sigma), VT)
-    predicted = np.clip(predicted, 0, 5)  # ratings between 0-5
-    predicted = np.round(predicted).astype(int)  # round to nearest integer
+    predicted = np.clip(predicted, 0, 5)  # clamp ratings to 0-5
     return predicted
 
 def get_unrated_predictions(user_ratings, predicted_row, movie_list):
@@ -70,40 +69,35 @@ ratings_df.loc[len(ratings_df)] = [user_id] + new_ratings
 # -----------------------------
 ratings_matrix = ratings_df.iloc[:, 1:].values.astype(float)
 
-# Keep a copy of original ratings with NaN to know what the user rated
+# Keep a copy of original ratings with NaN
 original_ratings = ratings_matrix.copy()
 
-# Replace NaN with column means for SVD
+# -----------------------------
+# Normalize: subtract movie means, leave NaNs as 0
+# -----------------------------
 col_means = np.nanmean(ratings_matrix, axis=0)
-inds = np.where(np.isnan(ratings_matrix))
-ratings_matrix[inds] = np.take(col_means, inds[1])
+ratings_norm = np.where(np.isnan(ratings_matrix), 0, ratings_matrix - col_means)
 
 # -----------------------------
 # Compute SVD and predicted ratings
 # -----------------------------
-U, Sigma, VT = compute_svd(ratings_matrix)
+U, Sigma, VT = compute_svd(ratings_norm)
 predicted_matrix = predict_ratings(U, Sigma, VT)
 
+# Add back the movie means to predicted ratings
+predicted_matrix += col_means
+predicted_matrix = np.clip(predicted_matrix, 0, 5)  # ensure 0-5
+predicted_matrix_rounded = np.round(predicted_matrix, 1)  # for display
+
 print("\nPredicted Ratings Table:")
-print(predicted_matrix)
+print(predicted_matrix_rounded)
 
 # -----------------------------
 # Recommend movies
 # -----------------------------
 user_index = list(ratings_df["user_id"].values).index(user_id)
-predicted_row = predicted_matrix[user_index].astype(float)
+predicted_row = predicted_matrix[user_index]
 user_input_ratings = original_ratings[user_index]
-
-# -----------------------------
-# Adjust predicted ratings for new user
-# -----------------------------
-user_mean = np.nanmean(user_input_ratings)  # mean of user's input ratings
-if np.isnan(user_mean):
-    user_mean = 3  # default if user left everything blank
-# Shift predicted row toward the user's mean rating
-predicted_row += (user_mean - np.mean(predicted_row))
-predicted_row = np.clip(predicted_row, 0, 5)
-predicted_row = np.round(predicted_row).astype(int)
 
 unrated_predictions = get_unrated_predictions(user_input_ratings, predicted_row, movies)
 
@@ -114,7 +108,7 @@ else:
     unrated_predictions.sort(key=lambda x: x[1], reverse=True)
     print(f"\nTop recommendations for {user_id}:")
     for movie, score in unrated_predictions[:2]:
-        print(f"  {movie} (predicted rating: {score})")
+        print(f"  {movie} (predicted rating: {round(score, 2)})")
 
 # -----------------------------
 # Visual heatmap
